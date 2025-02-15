@@ -44,6 +44,9 @@ importers:
       graphql:
         specifier: ^16.10.0
         version: 16.10.0
+      papaparse:
+        specifier: ^5.5.2
+        version: 5.5.2
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17
@@ -54,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^22.13.4
         version: 22.13.4
+      '@types/papaparse':
+        specifier: ^5.3.15
+        version: 5.3.15
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
@@ -789,6 +795,9 @@ packages:
 
   '@types/node@22.13.4':
     resolution: {integrity: sha512-ywP2X0DYtX3y08eFVx5fNIw7/uIv8hYUKgXoK8oayJlLnKcRfEYCxWMVE1XagUdVtCJlZT1AU4LXEABW+L1Peg==}
+
+  '@types/papaparse@5.3.15':
+    resolution: {integrity: sha512-JHe6vF6x/8Z85nCX4yFdDslN11d+1pr12E526X8WAfhadOeaOTx5AuIkvDKIBopfvlzpzkdMx4YyvSKCM9oqtw==}
 
   '@types/qs@6.9.18':
     resolution: {integrity: sha512-kK7dgTYDyGqS+e2Q4aK9X3D7q234CIZ1Bv0q/7Z5IwRDoADNU81xXJK/YVyLbLTZCoIwUoDoffFeF+p/eIklAA==}
@@ -1590,6 +1599,9 @@ packages:
   p-locate@5.0.0:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
+
+  papaparse@5.5.2:
+    resolution: {integrity: sha512-PZXg8UuAc4PcVwLosEEDYjPyfWnTEhOrUfdv+3Bx+NuAb+5NhDmXzg5fHWmdCh1mP5p7JAZfFr3IMQfcntNAdA==}
 
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
@@ -2443,6 +2455,10 @@ snapshots:
     dependencies:
       undici-types: 6.20.0
 
+  '@types/papaparse@5.3.15':
+    dependencies:
+      '@types/node': 22.13.4
+
   '@types/qs@6.9.18': {}
 
   '@types/range-parser@1.2.7': {}
@@ -3292,6 +3308,8 @@ snapshots:
   p-locate@5.0.0:
     dependencies:
       p-limit: 3.1.0
+
+  papaparse@5.5.2: {}
 
   parent-module@1.0.1:
     dependencies:

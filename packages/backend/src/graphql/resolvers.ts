@@ -2,43 +2,122 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '../db';
 import { earthquakes } from '../db/schema';
-import { Resolvers, CreateEarthquakeInput, UpdateEarthquakeInput } from './types';
+import { Resolvers } from './types';
+import { GraphQLError } from 'graphql';
+
+const validateMagnitude = (magnitude: number): void => {
+  if (magnitude < 0 || magnitude > 10) {
+    throw new GraphQLError('Magnitude must be between 0 and 10', {
+      extensions: { code: 'BAD_USER_INPUT' },
+    });
+  }
+};
+
+const validateDate = (date: string): void => {
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) {
+    throw new GraphQLError('Invalid date format', {
+      extensions: { code: 'BAD_USER_INPUT' },
+    });
+  }
+};
 
 export const resolvers: Resolvers = {
   Query: {
     earthquakes: async () => {
-      return await db.select().from(earthquakes);
+      try {
+        return await db.select().from(earthquakes).orderBy(earthquakes.date);
+      } catch (error) {
+        throw new GraphQLError('Failed to fetch earthquakes', {
+          extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
+      }
     },
     earthquake: async (_, { id }) => {
-      const results = await db.select().from(earthquakes).where(eq(earthquakes.id, id));
-      return results[0] || null;
+      try {
+        const results = await db.select().from(earthquakes).where(eq(earthquakes.id, id));
+        if (!results.length) {
+          throw new GraphQLError(`Earthquake with ID ${id} not found`, {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+        return results[0];
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw new GraphQLError('Failed to fetch earthquake', {
+          extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
+      }
     },
   },
   Mutation: {
     createEarthquake: async (_, { input }) => {
-      const [earthquake] = await db
-        .insert(earthquakes)
-        .values(input as CreateEarthquakeInput)
-        .returning();
-      return earthquake;
+      try {
+        validateMagnitude(input.magnitude);
+        if (input.date) validateDate(input.date);
+
+        const [earthquake] = await db
+          .insert(earthquakes)
+          .values({
+            ...input,
+            date: input.date || new Date().toISOString(),
+          })
+          .returning();
+
+        return earthquake;
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw new GraphQLError('Failed to create earthquake', {
+          extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
+      }
     },
     updateEarthquake: async (_, { id, input }) => {
-      const [updated] = await db
-        .update(earthquakes)
-        .set(input as UpdateEarthquakeInput)
-        .where(eq(earthquakes.id, id))
-        .returning();
+      try {
+        if (input.magnitude !== undefined) {
+          validateMagnitude(input.magnitude);
+        }
+        if (input.date) {
+          validateDate(input.date);
+        }
 
-      if (!updated) {
-        throw new Error(`Earthquake with ID ${id} not found`);
+        const [updated] = await db
+          .update(earthquakes)
+          .set(input)
+          .where(eq(earthquakes.id, id))
+          .returning();
+
+        if (!updated) {
+          throw new GraphQLError(`Earthquake with ID ${id} not found`, {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+
+        return updated;
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw new GraphQLError('Failed to update earthquake', {
+          extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
       }
-
-      return updated;
     },
     deleteEarthquake: async (_, { id }) => {
-      const [deleted] = await db.delete(earthquakes).where(eq(earthquakes.id, id)).returning();
+      try {
+        const [deleted] = await db.delete(earthquakes).where(eq(earthquakes.id, id)).returning();
 
-      return !!deleted;
+        if (!deleted) {
+          throw new GraphQLError(`Earthquake with ID ${id} not found`, {
+            extensions: { code: 'NOT_FOUND' },
+          });
+        }
+
+        return true;
+      } catch (error) {
+        if (error instanceof GraphQLError) throw error;
+        throw new GraphQLError('Failed to delete earthquake', {
+          extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
+      }
     },
   },
 };
