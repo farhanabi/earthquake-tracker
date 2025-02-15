@@ -2,6 +2,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import { format } from 'date-fns';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -20,17 +21,20 @@ import {
   GET_EARTHQUAKES,
   Earthquake,
 } from '../graphql/operations';
+import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 
-export const EarthquakeList = ({
-  onEdit,
-}: {
+interface EarthquakeListProps {
   onEdit: (earthquake: Earthquake) => void;
-}) => {
+}
+
+export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
   const { data, loading, error } = useQuery(GET_EARTHQUAKES);
   const [deleteEarthquake] = useMutation(DELETE_EARTHQUAKE, {
     refetchQueries: [{ query: GET_EARTHQUAKES }],
   });
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [earthquakeToDelete, setEarthquakeToDelete] =
+    useState<Earthquake | null>(null);
 
   if (loading) {
     return (
@@ -49,14 +53,21 @@ export const EarthquakeList = ({
       </Alert>
     );
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async () => {
+    if (!earthquakeToDelete) return;
+
     try {
-      await deleteEarthquake({ variables: { id } });
+      await deleteEarthquake({
+        variables: { id: earthquakeToDelete.id },
+      });
       setDeleteError(null);
+      setEarthquakeToDelete(null);
+      toast.success('Earthquake deleted successfully');
     } catch (err) {
       setDeleteError(
         err instanceof Error ? err.message : 'Failed to delete earthquake'
       );
+      toast.error('Failed to delete earthquake');
     }
   };
 
@@ -67,6 +78,13 @@ export const EarthquakeList = ({
           <AlertDescription>{deleteError}</AlertDescription>
         </Alert>
       )}
+
+      <DeleteConfirmationDialog
+        isOpen={!!earthquakeToDelete}
+        onClose={() => setEarthquakeToDelete(null)}
+        onConfirm={handleDelete}
+        location={earthquakeToDelete?.location ?? ''}
+      />
 
       <Table>
         <TableHeader>
@@ -97,7 +115,7 @@ export const EarthquakeList = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(earthquake.id)}
+                    onClick={() => setEarthquakeToDelete(earthquake)}
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />

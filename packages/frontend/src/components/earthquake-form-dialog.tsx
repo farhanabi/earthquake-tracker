@@ -1,9 +1,15 @@
 import { useMutation } from '@apollo/client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 
@@ -15,21 +21,34 @@ import {
   CreateEarthquakeInput,
 } from '../graphql/operations';
 
-interface EarthquakeFormProps {
+interface EarthquakeFormDialogProps {
   earthquake?: Earthquake;
-  onComplete: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export const EarthquakeForm = ({
+export const EarthquakeFormDialog = ({
   earthquake,
-  onComplete,
-}: EarthquakeFormProps) => {
+  isOpen,
+  onClose,
+}: EarthquakeFormDialogProps) => {
   const [formData, setFormData] = useState<CreateEarthquakeInput>({
-    location: earthquake?.location || '',
-    magnitude: earthquake?.magnitude || 0,
-    date: earthquake?.date || new Date().toISOString(),
+    location: '',
+    magnitude: 0,
+    date: new Date().toISOString(),
   });
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        location: earthquake?.location ?? '',
+        magnitude: earthquake?.magnitude ?? 0,
+        date: earthquake?.date ?? new Date().toISOString(),
+      });
+      setError(null);
+    }
+  }, [isOpen, earthquake]);
 
   const [createEarthquake] = useMutation(CREATE_EARTHQUAKE, {
     refetchQueries: [{ query: GET_EARTHQUAKES }],
@@ -51,16 +70,21 @@ export const EarthquakeForm = ({
             input: formData,
           },
         });
+        toast.success('Earthquake updated successfully');
       } else {
         await createEarthquake({
           variables: {
             input: formData,
           },
         });
+        toast.success('Earthquake added successfully');
       }
-      onComplete();
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      toast.error(
+        `Operation failed: ${err instanceof Error ? err.message : 'An error occurred'}`
+      );
     }
   };
 
@@ -73,11 +97,12 @@ export const EarthquakeForm = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{earthquake ? 'Edit' : 'Add'} Earthquake</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{earthquake ? 'Edit' : 'Add'} Earthquake</DialogTitle>
+        </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <Alert variant="destructive">
@@ -124,15 +149,15 @@ export const EarthquakeForm = ({
           </div>
 
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" type="button" onClick={onComplete}>
+            <Button variant="outline" type="button" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit">{earthquake ? 'Update' : 'Create'}</Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default EarthquakeForm;
+export default EarthquakeFormDialog;

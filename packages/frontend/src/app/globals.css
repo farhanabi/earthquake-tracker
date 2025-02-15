@@ -1,10 +1,8 @@
 @import 'tailwindcss';
 
-@tailwind base;
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
-@tailwind components;
 @tailwind utilities;
 
 :root {

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import apolloClient from '../lib/apollo-client';
 import { Earthquake } from '../graphql/operations';
 import { EarthquakeList } from '../components/earthquake-list';
-import { EarthquakeForm } from '../components/earthquake-form';
+import { EarthquakeFormDialog } from '../components/earthquake-form-dialog';
 
 export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -23,7 +23,7 @@ export default function Home() {
     setIsFormOpen(true);
   };
 
-  const handleComplete = () => {
+  const handleClose = () => {
     setIsFormOpen(false);
     setSelectedEarthquake(undefined);
   };
@@ -40,16 +40,15 @@ export default function Home() {
             </Button>
           </CardHeader>
           <CardContent>
-            {isFormOpen ? (
-              <EarthquakeForm
-                earthquake={selectedEarthquake}
-                onComplete={handleComplete}
-              />
-            ) : (
-              <EarthquakeList onEdit={handleEdit} />
-            )}
+            <EarthquakeList onEdit={handleEdit} />
           </CardContent>
         </Card>
+
+        <EarthquakeFormDialog
+          earthquake={selectedEarthquake}
+          isOpen={isFormOpen}
+          onClose={handleClose}
+        />
       </main>
     </ApolloProvider>
   );
