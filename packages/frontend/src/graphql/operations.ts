@@ -1,12 +1,18 @@
 import { gql } from '@apollo/client';
 
 export const GET_EARTHQUAKES = gql`
-  query GetEarthquakes {
-    earthquakes {
-      id
-      location
-      magnitude
-      date
+  query GetEarthquakes($page: Int, $pageSize: Int) {
+    earthquakes(page: $page, pageSize: $pageSize) {
+      data {
+        id
+        location
+        magnitude
+        date
+      }
+      total
+      pageSize
+      page
+      totalPages
     }
   }
 `;

@@ -7,6 +7,14 @@ export interface Earthquake {
   date: string;
 }
 
+export interface PaginatedEarthquakes {
+  data: Earthquake[];
+  total: number;
+  pageSize: number;
+  page: number;
+  totalPages: number;
+}
+
 export interface CreateEarthquakeInput {
   location: string;
   magnitude: number;
@@ -23,6 +31,11 @@ export interface Context {
   requestId: string;
 }
 
+interface PaginationArgs {
+  page?: number;
+  pageSize?: number;
+}
+
 type Resolver<TResult, TParent = any, TContext = Context, TArgs = Record<string, any>> = (
   parent: TParent,
   args: TArgs,
@@ -31,7 +44,7 @@ type Resolver<TResult, TParent = any, TContext = Context, TArgs = Record<string,
 ) => Promise<TResult> | TResult;
 
 export interface QueryResolvers<TContext = Context> {
-  earthquakes: Resolver<Earthquake[], any, TContext>;
+  earthquakes: Resolver<PaginatedEarthquakes, any, TContext, PaginationArgs>;
   earthquake: Resolver<Earthquake | null, any, TContext, { id: number }>;
 }
 

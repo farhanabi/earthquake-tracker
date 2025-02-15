@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@apollo/client';
 import { format } from 'date-fns';
-import { Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -28,10 +28,22 @@ interface EarthquakeListProps {
 }
 
 export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
-  const { data, loading, error } = useQuery(GET_EARTHQUAKES);
-  const [deleteEarthquake] = useMutation(DELETE_EARTHQUAKE, {
-    refetchQueries: [{ query: GET_EARTHQUAKES }],
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const { data, loading, error } = useQuery(GET_EARTHQUAKES, {
+    variables: { page: currentPage, pageSize },
   });
+
+  const [deleteEarthquake] = useMutation(DELETE_EARTHQUAKE, {
+    refetchQueries: [
+      {
+        query: GET_EARTHQUAKES,
+        variables: { page: currentPage, pageSize },
+      },
+    ],
+  });
+
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [earthquakeToDelete, setEarthquakeToDelete] =
     useState<Earthquake | null>(null);
@@ -71,6 +83,10 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
   return (
     <div className="space-y-4">
       {deleteError && (
@@ -96,7 +112,7 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data?.earthquakes.map((earthquake: Earthquake) => (
+          {data?.earthquakes.data.map((earthquake: Earthquake) => (
             <TableRow key={earthquake.id}>
               <TableCell>{earthquake.location}</TableCell>
               <TableCell>{earthquake.magnitude.toFixed(1)}</TableCell>
@@ -126,6 +142,35 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
           ))}
         </TableBody>
       </Table>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {data?.earthquakes.data.length} of {data?.earthquakes.total}{' '}
+          results
+        </p>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm">
+            Page {currentPage} of {data?.earthquakes.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === data?.earthquakes.totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

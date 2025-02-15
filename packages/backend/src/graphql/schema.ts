@@ -6,8 +6,16 @@ export const typeDefs = `#graphql
     date: String!
   }
 
+  type PaginatedEarthquakes {
+    data: [Earthquake!]!
+    total: Int!
+    pageSize: Int!
+    page: Int!
+    totalPages: Int!
+  }
+
   type Query {
-    earthquakes: [Earthquake!]!
+    earthquakes(page: Int = 1, pageSize: Int = 10): PaginatedEarthquakes!
     earthquake(id: Int!): Earthquake
   }
 

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { GraphQLError } from 'graphql';
 
 import { db } from '../db';
@@ -25,10 +25,32 @@ const validateDate = (date: string): void => {
 
 export const resolvers: Resolvers = {
   Query: {
-    earthquakes: async () => {
+    earthquakes: async (_, { page = 1, pageSize = 10 }) => {
       try {
-        return await db.select().from(earthquakes).orderBy(earthquakes.date);
-      } catch {
+        // Ensure valid pagination parameters
+        const validatedPage = Math.max(1, page);
+        const validatedPageSize = Math.min(Math.max(1, pageSize), 100); // Max 100 items per page
+        const offset = (validatedPage - 1) * validatedPageSize;
+
+        const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(earthquakes);
+
+        const data = await db
+          .select()
+          .from(earthquakes)
+          .orderBy(earthquakes.date)
+          .limit(validatedPageSize)
+          .offset(offset);
+
+        const totalPages = Math.ceil(count / validatedPageSize);
+
+        return {
+          data,
+          total: count,
+          pageSize: validatedPageSize,
+          page: validatedPage,
+          totalPages,
+        };
+      } catch (error) {
         throw new GraphQLError('Failed to fetch earthquakes', {
           extensions: { code: 'INTERNAL_SERVER_ERROR' },
         });
