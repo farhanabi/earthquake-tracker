@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
+import debounce from 'lodash/debounce';
 
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -24,19 +25,66 @@ export interface FilterValues {
 interface EarthquakeFiltersProps {
   filters: FilterValues;
   onFilterChange: (filters: FilterValues) => void;
+  onReset: () => void;
 }
 
 export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
   filters,
   onFilterChange,
+  onReset,
 }) => {
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [localFilters, setLocalFilters] = useState({
+    search: filters.search || '',
+    minMagnitude: filters.minMagnitude ?? '',
+    maxMagnitude: filters.maxMagnitude ?? '',
+  });
+
+  const debouncedFilterChange = useCallback(
+    debounce((newFilters: FilterValues) => {
+      onFilterChange(newFilters);
+    }, 300),
+    [onFilterChange]
+  );
+
+  useEffect(() => {
+    setLocalFilters({
+      search: filters.search || '',
+      minMagnitude: filters.minMagnitude ?? '',
+      maxMagnitude: filters.maxMagnitude ?? '',
+    });
+  }, [filters.search, filters.minMagnitude, filters.maxMagnitude]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalFilters((prev) => ({ ...prev, search: newValue }));
+    debouncedFilterChange({ ...filters, search: newValue });
+  };
+
+  const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    setLocalFilters((prev) => ({ ...prev, [name]: value }));
+
+    const numValue = value ? parseFloat(value) : undefined;
+    debouncedFilterChange({ ...filters, [name]: numValue });
+  };
+
+  const handleDateInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     onFilterChange({ ...filters, [name]: value });
   };
 
   const handleSortChange = (field: string, value: string) => {
     onFilterChange({ ...filters, [field]: value });
+  };
+
+  const handleReset = () => {
+    setLocalFilters({
+      search: '',
+      minMagnitude: '',
+      maxMagnitude: '',
+    });
+    onReset();
   };
 
   return (
@@ -48,8 +96,8 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
           <Input
             placeholder="Search locations..."
             name="search"
-            value={filters.search || ''}
-            onChange={handleInputChange}
+            value={localFilters.search}
+            onChange={handleSearchChange}
             className="pl-8"
           />
         </div>
@@ -60,16 +108,16 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
             type="number"
             placeholder="Min magnitude"
             name="minMagnitude"
-            value={filters.minMagnitude || ''}
-            onChange={handleInputChange}
+            value={localFilters.minMagnitude}
+            onChange={handleNumberInput}
             step="0.1"
           />
           <Input
             type="number"
             placeholder="Max magnitude"
             name="maxMagnitude"
-            value={filters.maxMagnitude || ''}
-            onChange={handleInputChange}
+            value={localFilters.maxMagnitude}
+            onChange={handleNumberInput}
             step="0.1"
           />
         </div>
@@ -80,13 +128,13 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
             type="date"
             name="fromDate"
             value={filters.fromDate || ''}
-            onChange={handleInputChange}
+            onChange={handleDateInput}
           />
           <Input
             type="date"
             name="toDate"
             value={filters.toDate || ''}
-            onChange={handleInputChange}
+            onChange={handleDateInput}
           />
         </div>
       </div>
@@ -122,11 +170,7 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
         </Select>
 
         {/* Reset Filters */}
-        <Button
-          variant="outline"
-          onClick={() => onFilterChange({})}
-          className="ml-auto"
-        >
+        <Button variant="outline" onClick={handleReset} className="ml-auto">
           Reset Filters
         </Button>
       </div>

@@ -1,8 +1,9 @@
 import { useQuery, useMutation } from '@apollo/client';
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -29,36 +30,58 @@ interface EarthquakeListProps {
 }
 
 export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<FilterValues>({});
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [currentPage, setCurrentPage] = useState(
+    () => Number(searchParams.get('page')) || 1
+  );
+
+  const [filters, setFilters] = useState<FilterValues>(() => ({
+    search: searchParams.get('search') || '',
+    minMagnitude: searchParams.get('minMagnitude')
+      ? Number(searchParams.get('minMagnitude'))
+      : undefined,
+    maxMagnitude: searchParams.get('maxMagnitude')
+      ? Number(searchParams.get('maxMagnitude'))
+      : undefined,
+    fromDate: searchParams.get('fromDate') || '',
+    toDate: searchParams.get('toDate') || '',
+    sortField: searchParams.get('sortField') || '',
+    sortOrder: searchParams.get('sortOrder') || '',
+  }));
+
   const pageSize = 10;
 
-  console.log({
-    variables: {
-      page: currentPage,
-      pageSize,
-      sort: filters.sortField
-        ? {
-            field: filters.sortField,
-            order: filters.sortOrder || 'DESC',
-          }
-        : undefined,
-      filter: {
-        search: filters.search,
-        minMagnitude: filters.minMagnitude
-          ? parseFloat(filters.minMagnitude.toString())
-          : undefined,
-        maxMagnitude: filters.maxMagnitude
-          ? parseFloat(filters.maxMagnitude.toString())
-          : undefined,
-        fromDate: filters.fromDate,
-        toDate: filters.toDate,
-      },
+  const updateURL = useCallback(
+    (newPage: number, newFilters: FilterValues) => {
+      const params = new URLSearchParams();
+
+      if (newPage > 1) {
+        params.set('page', newPage.toString());
+      }
+
+      if (newFilters.search) params.set('search', newFilters.search);
+      if (newFilters.minMagnitude)
+        params.set('minMagnitude', newFilters.minMagnitude.toString());
+      if (newFilters.maxMagnitude)
+        params.set('maxMagnitude', newFilters.maxMagnitude.toString());
+      if (newFilters.fromDate) params.set('fromDate', newFilters.fromDate);
+      if (newFilters.toDate) params.set('toDate', newFilters.toDate);
+      if (newFilters.sortField) params.set('sortField', newFilters.sortField);
+      if (newFilters.sortOrder) params.set('sortOrder', newFilters.sortOrder);
+
+      const newURL = params.toString() ? `?${params.toString()}` : '';
+      router.push(newURL, { scroll: false });
     },
-  });
+    [router]
+  );
+
+  useEffect(() => {
+    updateURL(currentPage, filters);
+  }, [currentPage, filters, updateURL]);
 
   const { data, loading, error } = useQuery(GET_EARTHQUAKES, {
-    fetchPolicy: 'cache-and-network',
     variables: {
       page: currentPage,
       pageSize,
@@ -70,12 +93,8 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
         : undefined,
       filter: {
         search: filters.search,
-        minMagnitude: filters.minMagnitude
-          ? parseFloat(filters.minMagnitude.toString())
-          : undefined,
-        maxMagnitude: filters.maxMagnitude
-          ? parseFloat(filters.maxMagnitude.toString())
-          : undefined,
+        minMagnitude: filters.minMagnitude,
+        maxMagnitude: filters.maxMagnitude,
         fromDate: filters.fromDate,
         toDate: filters.toDate,
       },
@@ -86,7 +105,23 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
     refetchQueries: [
       {
         query: GET_EARTHQUAKES,
-        variables: { page: currentPage, pageSize },
+        variables: {
+          page: currentPage,
+          pageSize,
+          sort: filters.sortField
+            ? {
+                field: filters.sortField,
+                order: filters.sortOrder || 'DESC',
+              }
+            : undefined,
+          filter: {
+            search: filters.search,
+            minMagnitude: filters.minMagnitude,
+            maxMagnitude: filters.maxMagnitude,
+            fromDate: filters.fromDate,
+            toDate: filters.toDate,
+          },
+        },
       },
     ],
   });
@@ -94,23 +129,6 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [earthquakeToDelete, setEarthquakeToDelete] =
     useState<Earthquake | null>(null);
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-[250px]" />
-        <Skeleton className="h-4 w-[200px]" />
-        <Skeleton className="h-4 w-[300px]" />
-      </div>
-    );
-  }
-
-  if (error)
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>Error: {error.message}</AlertDescription>
-      </Alert>
-    );
 
   const handleDelete = async () => {
     if (!earthquakeToDelete) return;
@@ -139,11 +157,43 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
     setCurrentPage(1);
   };
 
+  const handleFilterReset = () => {
+    setFilters({});
+    setCurrentPage(1);
+    router.push('', { scroll: false });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-[250px]" />
+        <Skeleton className="h-4 w-[200px]" />
+        <Skeleton className="h-4 w-[300px]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <EarthquakeFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleFilterReset}
+        />
+        <Alert variant="destructive">
+          <AlertDescription>Error: {error.message}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <EarthquakeFilters
         filters={filters}
         onFilterChange={handleFilterChange}
+        onReset={handleFilterReset}
       />
 
       {deleteError && (
