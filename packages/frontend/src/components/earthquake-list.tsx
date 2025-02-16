@@ -22,6 +22,7 @@ import {
   Earthquake,
 } from '../graphql/operations';
 import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
+import { EarthquakeFilters, FilterValues } from './earthquake-filters';
 
 interface EarthquakeListProps {
   onEdit: (earthquake: Earthquake) => void;
@@ -29,10 +30,56 @@ interface EarthquakeListProps {
 
 export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState<FilterValues>({});
   const pageSize = 10;
 
+  console.log({
+    variables: {
+      page: currentPage,
+      pageSize,
+      sort: filters.sortField
+        ? {
+            field: filters.sortField,
+            order: filters.sortOrder || 'DESC',
+          }
+        : undefined,
+      filter: {
+        search: filters.search,
+        minMagnitude: filters.minMagnitude
+          ? parseFloat(filters.minMagnitude.toString())
+          : undefined,
+        maxMagnitude: filters.maxMagnitude
+          ? parseFloat(filters.maxMagnitude.toString())
+          : undefined,
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+      },
+    },
+  });
+
   const { data, loading, error } = useQuery(GET_EARTHQUAKES, {
-    variables: { page: currentPage, pageSize },
+    fetchPolicy: 'cache-and-network',
+    variables: {
+      page: currentPage,
+      pageSize,
+      sort: filters.sortField
+        ? {
+            field: filters.sortField,
+            order: filters.sortOrder || 'DESC',
+          }
+        : undefined,
+      filter: {
+        search: filters.search,
+        minMagnitude: filters.minMagnitude
+          ? parseFloat(filters.minMagnitude.toString())
+          : undefined,
+        maxMagnitude: filters.maxMagnitude
+          ? parseFloat(filters.maxMagnitude.toString())
+          : undefined,
+        fromDate: filters.fromDate,
+        toDate: filters.toDate,
+      },
+    },
   });
 
   const [deleteEarthquake] = useMutation(DELETE_EARTHQUAKE, {
@@ -87,8 +134,18 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
     setCurrentPage(newPage);
   };
 
+  const handleFilterChange = (newFilters: FilterValues) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4">
+      <EarthquakeFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+      />
+
       {deleteError && (
         <Alert variant="destructive">
           <AlertDescription>{deleteError}</AlertDescription>

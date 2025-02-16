@@ -7,6 +7,30 @@ export interface Earthquake {
   date: string;
 }
 
+export enum SortField {
+  DATE = 'DATE',
+  MAGNITUDE = 'MAGNITUDE',
+  LOCATION = 'LOCATION',
+}
+
+export enum SortOrder {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}
+
+export interface SortInput {
+  field: SortField;
+  order: SortOrder;
+}
+
+export interface FilterInput {
+  search?: string;
+  minMagnitude?: number;
+  maxMagnitude?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
 export interface PaginatedEarthquakes {
   data: Earthquake[];
   total: number;
@@ -31,9 +55,11 @@ export interface Context {
   requestId: string;
 }
 
-interface PaginationArgs {
+export interface QueryArgs {
   page?: number;
   pageSize?: number;
+  sort?: SortInput;
+  filter?: FilterInput;
 }
 
 type Resolver<TResult, TParent = any, TContext = Context, TArgs = Record<string, any>> = (
@@ -44,7 +70,7 @@ type Resolver<TResult, TParent = any, TContext = Context, TArgs = Record<string,
 ) => Promise<TResult> | TResult;
 
 export interface QueryResolvers<TContext = Context> {
-  earthquakes: Resolver<PaginatedEarthquakes, any, TContext, PaginationArgs>;
+  earthquakes: Resolver<PaginatedEarthquakes, any, TContext, QueryArgs>;
   earthquake: Resolver<Earthquake | null, any, TContext, { id: number }>;
 }
 

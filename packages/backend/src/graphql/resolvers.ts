@@ -1,10 +1,10 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, like, lte, sql } from 'drizzle-orm';
 import { GraphQLError } from 'graphql';
 
 import { db } from '../db';
 import { earthquakes } from '../db/schema';
 
-import { Resolvers } from './types';
+import { QueryArgs, Resolvers, SortField, SortOrder } from './types';
 
 const validateMagnitude = (magnitude: number): void => {
   if (magnitude < 0 || magnitude > 10) {
@@ -25,21 +25,67 @@ const validateDate = (date: string): void => {
 
 export const resolvers: Resolvers = {
   Query: {
-    earthquakes: async (_, { page = 1, pageSize = 10 }) => {
+    earthquakes: async (_, { page = 1, pageSize = 10, sort, filter }: QueryArgs) => {
       try {
-        // Ensure valid pagination parameters
         const validatedPage = Math.max(1, page);
-        const validatedPageSize = Math.min(Math.max(1, pageSize), 100); // Max 100 items per page
+        const validatedPageSize = Math.min(Math.max(1, pageSize), 100);
         const offset = (validatedPage - 1) * validatedPageSize;
 
-        const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(earthquakes);
+        const conditions = [];
+        if (filter) {
+          if (filter.search) {
+            conditions.push(like(earthquakes.location, `%${filter.search}%`));
+          }
+          if (filter.minMagnitude !== undefined) {
+            conditions.push(gte(earthquakes.magnitude, filter.minMagnitude));
+          }
+          if (filter.maxMagnitude !== undefined) {
+            conditions.push(lte(earthquakes.magnitude, filter.maxMagnitude));
+          }
+          if (filter.fromDate) {
+            conditions.push(gte(earthquakes.date, filter.fromDate));
+          }
+          if (filter.toDate) {
+            conditions.push(lte(earthquakes.date, filter.toDate));
+          }
+        }
 
-        const data = await db
-          .select()
-          .from(earthquakes)
-          .orderBy(earthquakes.date)
-          .limit(validatedPageSize)
-          .offset(offset);
+        let orderBy = sql`${earthquakes.date} DESC`;
+        if (sort) {
+          const direction = sort.order === SortOrder.ASC ? 'ASC' : 'DESC';
+          switch (sort.field) {
+            case SortField.DATE:
+              orderBy = sql`${earthquakes.date} ${sql.raw(direction)}`;
+              break;
+            case SortField.MAGNITUDE:
+              orderBy = sql`${earthquakes.magnitude} ${sql.raw(direction)}`;
+              break;
+            case SortField.LOCATION:
+              orderBy = sql`${earthquakes.location} ${sql.raw(direction)}`;
+              break;
+          }
+        }
+
+        const countQuery =
+          conditions.length > 0
+            ? db
+                .select({ count: sql<number>`count(*)` })
+                .from(earthquakes)
+                .where(and(...conditions))
+            : db.select({ count: sql<number>`count(*)` }).from(earthquakes);
+
+        const [countResult] = await countQuery;
+        const count = countResult.count;
+
+        const dataQuery =
+          conditions.length > 0
+            ? db
+                .select()
+                .from(earthquakes)
+                .where(and(...conditions))
+            : db.select().from(earthquakes);
+
+        const data = await dataQuery.orderBy(orderBy).limit(validatedPageSize).offset(offset);
 
         const totalPages = Math.ceil(count / validatedPageSize);
 
@@ -51,6 +97,7 @@ export const resolvers: Resolvers = {
           totalPages,
         };
       } catch (error) {
+        console.error('Error in earthquakes resolver:', error);
         throw new GraphQLError('Failed to fetch earthquakes', {
           extensions: { code: 'INTERNAL_SERVER_ERROR' },
         });

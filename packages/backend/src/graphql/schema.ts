@@ -1,4 +1,28 @@
 export const typeDefs = `#graphql
+  enum SortField {
+    DATE
+    MAGNITUDE
+    LOCATION
+  }
+
+  enum SortOrder {
+    ASC
+    DESC
+  }
+
+  input SortInput {
+    field: SortField!
+    order: SortOrder!
+  }
+
+  input FilterInput {
+    search: String
+    minMagnitude: Float
+    maxMagnitude: Float
+    fromDate: String
+    toDate: String
+  }
+
   type Earthquake {
     id: Int!
     location: String!
@@ -15,7 +39,12 @@ export const typeDefs = `#graphql
   }
 
   type Query {
-    earthquakes(page: Int = 1, pageSize: Int = 10): PaginatedEarthquakes!
+    earthquakes(
+      page: Int = 1
+      pageSize: Int = 10
+      sort: SortInput
+      filter: FilterInput
+    ): PaginatedEarthquakes!
     earthquake(id: Int!): Earthquake
   }
 
