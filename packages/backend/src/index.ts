@@ -4,10 +4,10 @@ import { expressMiddleware } from '@apollo/server/express4';
 import cors from 'cors';
 import express from 'express';
 
-import { typeDefs } from './graphql/schema';
 import { resolvers } from './graphql/resolvers';
+import { typeDefs } from './graphql/schema';
 
-async function startServer() {
+async function startServer(): Promise<void> {
   const app = express();
   const port = process.env.PORT || 4000;
 

@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm';
+import { GraphQLError } from 'graphql';
 
 import { db } from '../db';
 import { earthquakes } from '../db/schema';
+
 import { Resolvers } from './types';
-import { GraphQLError } from 'graphql';
 
 const validateMagnitude = (magnitude: number): void => {
   if (magnitude < 0 || magnitude > 10) {
@@ -27,7 +28,7 @@ export const resolvers: Resolvers = {
     earthquakes: async () => {
       try {
         return await db.select().from(earthquakes).orderBy(earthquakes.date);
-      } catch (error) {
+      } catch {
         throw new GraphQLError('Failed to fetch earthquakes', {
           extensions: { code: 'INTERNAL_SERVER_ERROR' },
         });

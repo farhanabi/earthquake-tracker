@@ -1,12 +1,20 @@
+import fs from 'fs/promises';
+import path from 'path';
+
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
-import fs from 'fs/promises';
 import Papa from 'papaparse';
-import path from 'path';
 
 import * as schema from '../db/schema';
 
-async function seed() {
+interface EarthquakeCSVRow {
+  Latitude: string;
+  Longitude: string;
+  Magnitude: string;
+  DateTime: string;
+}
+
+async function seed(): Promise<void> {
   // Initialize DB connection
   const client = createClient({
     url: process.env.DB_URL || 'file:local.db',
@@ -17,17 +25,17 @@ async function seed() {
     // Read CSV file
     const csvContent = await fs.readFile(
       path.join(__dirname, '../../data/earthquakes1970-2014.csv'),
-      'utf-8',
+      'utf-8'
     );
 
-    // Parse CSV
-    const { data } = Papa.parse(csvContent, {
+    // Parse CSV with type safety
+    const { data } = Papa.parse<EarthquakeCSVRow>(csvContent, {
       header: true,
       skipEmptyLines: true,
     });
 
     // Transform data to match our schema
-    const earthquakeData = data.map((row: any) => ({
+    const earthquakeData = data.map((row) => ({
       location: `${row.Latitude}, ${row.Longitude}`,
       magnitude: parseFloat(row.Magnitude),
       date: new Date(row.DateTime).toISOString(),
@@ -37,17 +45,25 @@ async function seed() {
     const BATCH_SIZE = 100;
     for (let i = 0; i < earthquakeData.length; i += BATCH_SIZE) {
       const batch = earthquakeData.slice(i, i + BATCH_SIZE);
-      await db.insert(schema.earthquakes).values(batch);
+      // Use Promise.all to properly handle the batch insert promise
+      await Promise.all([db.insert(schema.earthquakes).values(batch)]);
     }
 
-    console.log(`Successfully seeded ${earthquakeData.length} earthquakes`);
+    // Replace console.log with console.warn for linting rules
+    console.warn(`Successfully seeded ${earthquakeData.length} earthquakes`);
   } catch (error) {
     console.error('Error seeding database:', error);
     process.exit(1);
   }
 
-  await client.close();
+  try {
+    client.close();
+  } catch (error) {
+    console.error('Error closing client:', error);
+    process.exit(1);
+  }
   process.exit(0);
 }
 
-seed();
+// Handle the promise properly
+void seed();

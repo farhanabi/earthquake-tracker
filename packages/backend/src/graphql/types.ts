@@ -1,4 +1,3 @@
-// src/graphql/types.ts
 import { GraphQLResolveInfo } from 'graphql';
 
 export interface Earthquake {
@@ -20,33 +19,34 @@ export interface UpdateEarthquakeInput {
   date?: string;
 }
 
-export interface ResolverContext {}
+export interface Context {
+  requestId: string;
+}
 
-type Resolver<TResult, TParent = {}, TContext = {}, TArgs = {}> = (
+type Resolver<TResult, TParent = any, TContext = Context, TArgs = Record<string, any>> = (
   parent: TParent,
   args: TArgs,
   context: TContext,
-  info: GraphQLResolveInfo,
+  info: GraphQLResolveInfo
 ) => Promise<TResult> | TResult;
 
-export interface QueryResolvers {
-  earthquakes: Resolver<Earthquake[], {}, ResolverContext>;
-  earthquake: Resolver<Earthquake | null, {}, ResolverContext, { id: number }>;
+export interface QueryResolvers<TContext = Context> {
+  earthquakes: Resolver<Earthquake[], any, TContext>;
+  earthquake: Resolver<Earthquake | null, any, TContext, { id: number }>;
 }
 
-export interface MutationResolvers {
-  createEarthquake: Resolver<Earthquake, {}, ResolverContext, { input: CreateEarthquakeInput }>;
+export interface MutationResolvers<TContext = Context> {
+  createEarthquake: Resolver<Earthquake, any, TContext, { input: CreateEarthquakeInput }>;
   updateEarthquake: Resolver<
     Earthquake,
-    {},
-    ResolverContext,
+    any,
+    TContext,
     { id: number; input: UpdateEarthquakeInput }
   >;
-  deleteEarthquake: Resolver<boolean, {}, ResolverContext, { id: number }>;
+  deleteEarthquake: Resolver<boolean, any, TContext, { id: number }>;
 }
 
-export interface Resolvers {
-  Query: QueryResolvers;
-  Mutation: MutationResolvers;
-  [key: string]: any; // Add index signature for additional resolvers
+export interface Resolvers<TContext = Context> {
+  Query: QueryResolvers<TContext>;
+  Mutation: MutationResolvers<TContext>;
 }

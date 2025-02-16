@@ -9,8 +9,12 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,json,md}\"",
+    "check": "npm run format:check && npm run lint",
+    "fix": "npm run format && npm run lint:fix"
   },
   "dependencies": {
     "@apollo/server": "^4.11.3",
@@ -22,12 +26,23 @@
     "papaparse": "^5.5.2"
   },
   "devDependencies": {
+    "@eslint/compat": "^1.2.6",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.20.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.13.4",
     "@types/papaparse": "^5.3.14",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
     "dotenv": "^16.4.7",
     "drizzle-kit": "^0.30.4",
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-import-resolver-typescript": "^3.8.0",
+    "eslint-plugin-import": "^2.31.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
