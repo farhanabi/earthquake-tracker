@@ -11,6 +11,6 @@
     "resolveJsonModule": true,
     "outDir": "dist"
   },
-  "include": ["drizzle.config.ts", "src/**/*"],
+  "include": ["drizzle.config.ts", "jest.config.ts", "src/**/*"],
   "exclude": ["node_modules"]
 }

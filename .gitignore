@@ -47,4 +47,4 @@ out/
 .cache/
 .temp/
 
-local.db
+*.db
