@@ -1,8 +1,12 @@
-import { useMutation } from '@apollo/client';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+'use client';
 
-import { Alert, AlertDescription } from '~/components/ui/alert';
+import { useMutation } from '@apollo/client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
+
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -10,16 +14,64 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '~/components/ui/form';
 import { Input } from '~/components/ui/input';
-import { Label } from '~/components/ui/label';
 
 import {
   CREATE_EARTHQUAKE,
   UPDATE_EARTHQUAKE,
   GET_EARTHQUAKES,
   Earthquake,
-  CreateEarthquakeInput,
 } from '../graphql/operations';
+
+const coordinatePattern = /^-?\d+\.?\d*,\s*-?\d+\.?\d*$/;
+
+const earthquakeFormSchema = z.object({
+  location: z
+    .string()
+    .min(2, { message: 'Location must be at least 2 characters.' })
+    .max(100, { message: 'Location must not exceed 100 characters.' })
+    .refine((value) => coordinatePattern.test(value), {
+      message:
+        'Location must be in format: latitude, longitude (e.g., 38.297, 142.373)',
+    })
+    .refine(
+      (value) => {
+        const [lat, lon] = value
+          .split(',')
+          .map((coord) => Number(coord.trim()));
+        return (
+          !isNaN(lat) &&
+          !isNaN(lon) &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lon >= -180 &&
+          lon <= 180
+        );
+      },
+      {
+        message:
+          'Invalid coordinates. Latitude must be between -90° and 90°, longitude between -180° and 180°',
+      }
+    ),
+  magnitude: z
+    .number()
+    .min(0, { message: 'Magnitude must be at least 0.' })
+    .max(10, { message: 'Magnitude must not exceed 10.' }),
+  date: z.string().refine((date) => !isNaN(new Date(date).getTime()), {
+    message: 'Please enter a valid date.',
+  }),
+});
+
+type EarthquakeFormValues = z.infer<typeof earthquakeFormSchema>;
 
 interface EarthquakeFormDialogProps {
   earthquake?: Earthquake;
@@ -32,23 +84,14 @@ export const EarthquakeFormDialog = ({
   isOpen,
   onClose,
 }: EarthquakeFormDialogProps) => {
-  const [formData, setFormData] = useState<CreateEarthquakeInput>({
-    location: '',
-    magnitude: 0,
-    date: new Date().toISOString(),
+  const form = useForm<EarthquakeFormValues>({
+    resolver: zodResolver(earthquakeFormSchema),
+    defaultValues: {
+      location: '',
+      magnitude: 0,
+      date: new Date().toISOString().slice(0, 16),
+    },
   });
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        location: earthquake?.location ?? '',
-        magnitude: earthquake?.magnitude ?? 0,
-        date: earthquake?.date ?? new Date().toISOString(),
-      });
-      setError(null);
-    }
-  }, [isOpen, earthquake]);
 
   const [createEarthquake] = useMutation(CREATE_EARTHQUAKE, {
     refetchQueries: [{ query: GET_EARTHQUAKES }],
@@ -58,42 +101,48 @@ export const EarthquakeFormDialog = ({
     refetchQueries: [{ query: GET_EARTHQUAKES }],
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  useEffect(() => {
+    if (isOpen) {
+      if (earthquake) {
+        form.reset({
+          location: earthquake.location,
+          magnitude: earthquake.magnitude,
+          date: new Date(earthquake.date).toISOString().slice(0, 16),
+        });
+      } else {
+        form.reset({
+          location: '',
+          magnitude: 0,
+          date: new Date().toISOString().slice(0, 16),
+        });
+      }
+    }
+  }, [isOpen, earthquake, form]);
 
+  const onSubmit = async (values: EarthquakeFormValues) => {
     try {
       if (earthquake) {
         await updateEarthquake({
           variables: {
             id: earthquake.id,
-            input: formData,
+            input: values,
           },
         });
         toast.success('Earthquake updated successfully');
       } else {
         await createEarthquake({
           variables: {
-            input: formData,
+            input: values,
           },
         });
         toast.success('Earthquake added successfully');
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      toast.error(
-        `Operation failed: ${err instanceof Error ? err.message : 'An error occurred'}`
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : 'An error occurred';
+      toast.error(`Operation failed: ${errorMessage}`);
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === 'magnitude' ? parseFloat(value) || 0 : value,
-    }));
   };
 
   return (
@@ -103,58 +152,73 @@ export const EarthquakeFormDialog = ({
           <DialogTitle>{earthquake ? 'Edit' : 'Add'} Earthquake</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
               name="location"
-              value={formData.location}
-              onChange={handleChange}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location (Coordinates)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter coordinates (e.g., 38.297, 142.373)"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Enter the location as latitude, longitude (comma-separated)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="magnitude">Magnitude</Label>
-            <Input
-              type="number"
-              id="magnitude"
+            <FormField
+              control={form.control}
               name="magnitude"
-              value={formData.magnitude}
-              onChange={handleChange}
-              step="0.1"
-              min="0"
-              max="10"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Magnitude</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="Enter magnitude..."
+                      {...field}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        field.onChange(isNaN(value) ? 0 : value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              type="datetime-local"
-              id="date"
+            <FormField
+              control={form.control}
               name="date"
-              value={formData.date.slice(0, 16)}
-              onChange={handleChange}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date</FormLabel>
+                  <FormControl>
+                    <Input type="datetime-local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" type="button" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">{earthquake ? 'Update' : 'Create'}</Button>
-          </div>
-        </form>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" type="button" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">{earthquake ? 'Update' : 'Create'}</Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
