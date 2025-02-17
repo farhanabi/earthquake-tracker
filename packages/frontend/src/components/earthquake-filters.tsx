@@ -37,6 +37,8 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
     search: filters.search || '',
     minMagnitude: filters.minMagnitude ?? '',
     maxMagnitude: filters.maxMagnitude ?? '',
+    sortField: filters.sortField || 'DATE',
+    sortOrder: filters.sortOrder || 'DESC',
   });
 
   const debouncedFilterChange = useCallback(
@@ -51,6 +53,8 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
       search: filters.search || '',
       minMagnitude: filters.minMagnitude ?? '',
       maxMagnitude: filters.maxMagnitude ?? '',
+      sortField: filters.sortField || 'DATE',
+      sortOrder: filters.sortOrder || 'DESC',
     });
   }, [filters.search, filters.minMagnitude, filters.maxMagnitude]);
 
@@ -74,15 +78,13 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
     onFilterChange({ ...filters, [name]: value });
   };
 
-  const handleSortChange = (field: string, value: string) => {
-    onFilterChange({ ...filters, [field]: value });
-  };
-
   const handleReset = () => {
     setLocalFilters({
       search: '',
       minMagnitude: '',
       maxMagnitude: '',
+      sortField: 'DATE',
+      sortOrder: 'DESC',
     });
     onReset();
   };
@@ -142,30 +144,30 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
       <div className="flex gap-4">
         {/* Sort Field */}
         <Select
-          value={filters.sortField}
-          onValueChange={(value) => handleSortChange('sortField', value)}
+          value={`${filters.sortField}_${filters.sortOrder}`}
+          onValueChange={(value) => {
+            const [field, order] = value.split('_');
+            onFilterChange({
+              ...filters,
+              sortField: field,
+              sortOrder: order,
+            });
+          }}
         >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Sort by..." />
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="DATE">Date</SelectItem>
-            <SelectItem value="MAGNITUDE">Magnitude</SelectItem>
-            <SelectItem value="LOCATION">Location</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Sort Order */}
-        <Select
-          value={filters.sortOrder}
-          onValueChange={(value) => handleSortChange('sortOrder', value)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Order..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ASC">Ascending</SelectItem>
-            <SelectItem value="DESC">Descending</SelectItem>
+            <SelectItem value="DATE_DESC">Date (Latest first)</SelectItem>
+            <SelectItem value="DATE_ASC">Date (Oldest first)</SelectItem>
+            <SelectItem value="MAGNITUDE_ASC">
+              Magnitude (Low to High)
+            </SelectItem>
+            <SelectItem value="MAGNITUDE_DESC">
+              Magnitude (High to Low)
+            </SelectItem>
+            <SelectItem value="LOCATION_ASC">Location (A to Z)</SelectItem>
+            <SelectItem value="LOCATION_DESC">Location (Z to A)</SelectItem>
           </SelectContent>
         </Select>
 

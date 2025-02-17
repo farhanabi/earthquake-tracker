@@ -1,4 +1,4 @@
-import { and, eq, gte, like, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { GraphQLError } from 'graphql';
 
 import { db } from '../db';
@@ -34,7 +34,11 @@ export const resolvers: Resolvers = {
         const conditions = [];
         if (filter) {
           if (filter.search) {
-            conditions.push(like(earthquakes.location, `%${filter.search}%`));
+            conditions.push(sql`(
+              SUBSTR(TRIM(SUBSTR(location, 1, INSTR(location, ',') - 1)), 1, ${filter.search.length}) = ${filter.search}
+              OR
+              SUBSTR(TRIM(SUBSTR(location, INSTR(location, ',') + 1)), 1, ${filter.search.length}) = ${filter.search}
+            )`);
           }
           if (filter.minMagnitude !== undefined) {
             conditions.push(gte(earthquakes.magnitude, filter.minMagnitude));

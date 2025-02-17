@@ -47,8 +47,8 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
       : undefined,
     fromDate: searchParams.get('fromDate') || '',
     toDate: searchParams.get('toDate') || '',
-    sortField: searchParams.get('sortField') || '',
-    sortOrder: searchParams.get('sortOrder') || '',
+    sortField: searchParams.get('sortField') || 'DATE',
+    sortOrder: searchParams.get('sortOrder') || 'DESC',
   }));
 
   const pageSize = 10;
@@ -158,7 +158,10 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
   };
 
   const handleFilterReset = () => {
-    setFilters({});
+    setFilters({
+      sortField: 'DATE',
+      sortOrder: 'DESC',
+    });
     setCurrentPage(1);
     router.push('', { scroll: false });
   };
