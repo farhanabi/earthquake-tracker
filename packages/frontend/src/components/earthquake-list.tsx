@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '~/components/ui/table';
 import { Skeleton } from '~/components/ui/skeleton';
+import { FilterValues } from '~/types/filter-values';
 
 import {
   DELETE_EARTHQUAKE,
@@ -23,33 +24,24 @@ import {
   Earthquake,
 } from '../graphql/operations';
 import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
-import { EarthquakeFilters, FilterValues } from './earthquake-filters';
+import { EarthquakeFilters } from './earthquake-filters';
 
 interface EarthquakeListProps {
   onEdit: (earthquake: Earthquake) => void;
+  filters: FilterValues;
+  onFilterChange: (filters: FilterValues) => void;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }
 
-export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
+export const EarthquakeList = ({
+  onEdit,
+  filters,
+  onFilterChange,
+  currentPage,
+  onPageChange,
+}: EarthquakeListProps) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const [currentPage, setCurrentPage] = useState(
-    () => Number(searchParams.get('page')) || 1
-  );
-
-  const [filters, setFilters] = useState<FilterValues>(() => ({
-    search: searchParams.get('search') || '',
-    minMagnitude: searchParams.get('minMagnitude')
-      ? Number(searchParams.get('minMagnitude'))
-      : undefined,
-    maxMagnitude: searchParams.get('maxMagnitude')
-      ? Number(searchParams.get('maxMagnitude'))
-      : undefined,
-    fromDate: searchParams.get('fromDate') || '',
-    toDate: searchParams.get('toDate') || '',
-    sortField: searchParams.get('sortField') || 'DATE',
-    sortOrder: searchParams.get('sortOrder') || 'DESC',
-  }));
 
   const pageSize = 10;
 
@@ -149,20 +141,20 @@ export const EarthquakeList = ({ onEdit }: EarthquakeListProps) => {
   };
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
+    onPageChange(newPage);
   };
 
   const handleFilterChange = (newFilters: FilterValues) => {
-    setFilters(newFilters);
-    setCurrentPage(1);
+    onFilterChange(newFilters);
+    onPageChange(1);
   };
 
   const handleFilterReset = () => {
-    setFilters({
+    onFilterChange({
       sortField: 'DATE',
       sortOrder: 'DESC',
     });
-    setCurrentPage(1);
+    onPageChange(1);
     router.push('', { scroll: false });
   };
 

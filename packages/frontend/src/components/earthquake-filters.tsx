@@ -11,16 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select';
-
-export interface FilterValues {
-  search?: string;
-  minMagnitude?: number;
-  maxMagnitude?: number;
-  fromDate?: string;
-  toDate?: string;
-  sortField?: string;
-  sortOrder?: string;
-}
+import { FilterValues } from '~/types/filter-values';
 
 interface EarthquakeFiltersProps {
   filters: FilterValues;
@@ -44,7 +35,7 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
   const debouncedFilterChange = useCallback(
     debounce((newFilters: FilterValues) => {
       onFilterChange(newFilters);
-    }, 300),
+    }, 1000),
     [onFilterChange]
   );
 
@@ -56,7 +47,13 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
       sortField: filters.sortField || 'DATE',
       sortOrder: filters.sortOrder || 'DESC',
     });
-  }, [filters.search, filters.minMagnitude, filters.maxMagnitude]);
+  }, [
+    filters.search,
+    filters.minMagnitude,
+    filters.maxMagnitude,
+    filters.sortField,
+    filters.sortOrder,
+  ]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -128,14 +125,23 @@ export const EarthquakeFilters: React.FC<EarthquakeFiltersProps> = ({
         <div className="flex gap-2 min-w-[200px]">
           <Input
             type="date"
+            placeholder="From Date"
             name="fromDate"
             value={filters.fromDate || ''}
+            max={new Date(new Date()).toISOString().split('T')[0]}
             onChange={handleDateInput}
           />
           <Input
             type="date"
+            placeholder="To Date"
             name="toDate"
             value={filters.toDate || ''}
+            min={filters.fromDate || ''}
+            max={
+              new Date(new Date().setDate(new Date().getDate() + 1))
+                .toISOString()
+                .split('T')[0]
+            }
             onChange={handleDateInput}
           />
         </div>

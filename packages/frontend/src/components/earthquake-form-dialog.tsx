@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from '~/components/ui/form';
 import { Input } from '~/components/ui/input';
+import { FilterValues } from '~/types/filter-values';
 
 import {
   CREATE_EARTHQUAKE,
@@ -66,9 +67,14 @@ const earthquakeFormSchema = z.object({
     .number()
     .min(0, { message: 'Magnitude must be at least 0.' })
     .max(10, { message: 'Magnitude must not exceed 10.' }),
-  date: z.string().refine((date) => !isNaN(new Date(date).getTime()), {
-    message: 'Please enter a valid date.',
-  }),
+  date: z
+    .string()
+    .refine((date) => !isNaN(new Date(date).getTime()), {
+      message: 'Please enter a valid date.',
+    })
+    .refine((date) => new Date(date) <= new Date(), {
+      message: 'Date cannot be in the future.',
+    }),
 });
 
 type EarthquakeFormValues = z.infer<typeof earthquakeFormSchema>;
@@ -77,12 +83,16 @@ interface EarthquakeFormDialogProps {
   earthquake?: Earthquake;
   isOpen: boolean;
   onClose: () => void;
+  currentFilters: FilterValues;
+  currentPage: number;
 }
 
 export const EarthquakeFormDialog = ({
   earthquake,
   isOpen,
   onClose,
+  currentFilters,
+  currentPage,
 }: EarthquakeFormDialogProps) => {
   const form = useForm<EarthquakeFormValues>({
     resolver: zodResolver(earthquakeFormSchema),
@@ -119,6 +129,26 @@ export const EarthquakeFormDialog = ({
     }
   }, [isOpen, earthquake, form]);
 
+  const { refetch } = useQuery(GET_EARTHQUAKES, {
+    variables: {
+      page: currentPage,
+      pageSize: 10,
+      sort: currentFilters.sortField
+        ? {
+            field: currentFilters.sortField,
+            order: currentFilters.sortOrder || 'DESC',
+          }
+        : undefined,
+      filter: {
+        search: currentFilters.search,
+        minMagnitude: currentFilters.minMagnitude,
+        maxMagnitude: currentFilters.maxMagnitude,
+        fromDate: currentFilters.fromDate,
+        toDate: currentFilters.toDate,
+      },
+    },
+  });
+
   const onSubmit = async (values: EarthquakeFormValues) => {
     try {
       if (earthquake) {
@@ -137,6 +167,7 @@ export const EarthquakeFormDialog = ({
         });
         toast.success('Earthquake added successfully');
       }
+      refetch();
       onClose();
     } catch (err) {
       const errorMessage =
